@@ -13,6 +13,7 @@ use OxidEsales\Eshop\Core\Module\Module;
 use Exception;
 use OxidEsales\Eshop\Core\Registry;
 use OxidEsales\EshopCommunity\Internal\Container\ContainerFactory;
+use OxidEsales\Facts\Facts;
 use OxidEsales\TestingLibrary\Services\Library\Cache;
 
 /**
@@ -91,9 +92,7 @@ class ModuleLoader
 
         $cachedClassInstances = Registry::getKeys();
 
-        if (!$moduleInstaller->activate($module)) {
-            throw new Exception("Error on module installation: " . $module->getId());
-        }
+        $this->consoleActivateModule($module->getId());
 
         foreach ($cachedClassInstances as $cachedClassInstance) {
             if (\OxidEsales\Eshop\Core\ConfigFile::class !== $cachedClassInstance) {
@@ -111,6 +110,25 @@ class ModuleLoader
         }
 
         $this->clearShopTmpFolder();
+    }
+
+    private function consoleActivateModule(string $moduleId): void
+    {
+        $rootPath = (new Facts())->getShopRootPath();
+        $possiblePaths = [
+            '/bin/oe-console',
+            '/vendor/bin/oe-console',
+        ];
+
+        foreach ($possiblePaths as $path) {
+            if (is_file($rootPath . $path)) {
+                exec($rootPath . $path . ' oe:module:activate ' . $moduleId);
+
+                return;
+            }
+        }
+
+        throw new Exception('Could not find script "/bin/oe-console" to activate module');
     }
 
     /**
